@@ -24,7 +24,7 @@ function love.load()
     width, height, flags = love.window.getMode()
     love.mouse.setVisible(false)
     love.window.setTitle("Brick-breaker")
-    icon = love.graphics.newImage("data/icon.png")
+    icon = love.graphics.newImage("icon.png")
     love.window.setIcon(icon:getData())
 
     currentLevel = 1
