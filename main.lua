@@ -23,7 +23,7 @@ function love.load()
 
     width, height, flags = love.window.getMode()
     love.mouse.setVisible(false)
-    love.window.setTitle("Casse-Briques")
+    love.window.setTitle("Brick-breaker")
     icon = love.graphics.newImage("data/icon.png")
     love.window.setIcon(icon:getData())
 
@@ -63,14 +63,17 @@ function removeBrick()
             if canResetMultiplyTimer or canMultiply then lastBreak = os.time() end
             score = score + e.r * multiplieur
 
-            if ball.y - ball.radius - e.y >= 0 or ball.y + ball.radius - e.y <= 0 then
-                ball.verticalSpeed = -ball.verticalSpeed
+            if ball.y - ball.radius >= e.y and ball.y >= e.y + e.height then
+                ball.up = false
+                ball.down = true
+            elseif ball.y + ball.radius <= e.y + e.height and ball.y <= e.y + e.height then
+                ball.up = true
+                ball.down = false
             end
-
-            if ball.x + ball.radius >= e.x and ball.x - ball.radius <= e.x and ball.horizontalSpeed >= 0 then
-                ball.horizontalSpeed = -ball.horizontalSpeed
-            elseif ball.x - ball.radius <= e.x + e.width and ball.x + ball.radius >= e.x + e.width and ball.horizontalSpeed < 0 then
-                ball.horizontalSpeed = -ball.horizontalSpeed
+            if ball.x + ball.radius >= e.x and ball.x - ball.radius <= e.x and ball.angle >= 0 then
+                ball.angle = -ball.angle
+            elseif ball.x - ball.radius <= e.x + e.width and ball.x + ball.radius >= e.x + e.width and ball.angle < 0 then
+                ball.angle = -ball.angle
             end
 
             if e.haveBonus then
@@ -146,8 +149,13 @@ function love.update(dt)
         reset()
         gameOver = false
 
-        level.one()
-        
+        if currentLevel == 2 then
+            level.two()
+        elseif currentLevel == 3 then
+            level.three()
+        else
+            level.one()
+        end
         totalBrickCount = brickCount
     end
 
@@ -230,36 +238,40 @@ function love.update(dt)
 
     -- when ball hits the plateau
     if ( ball.y + ball.radius >= plateau.y and ball.y - ball.radius <= plateau.y + plateau.height and ball.x + ball.radius >= plateau.x and ball.x - ball.radius <= plateau.x + plateau.width ) then
-        ball.verticalSpeed = -ball.verticalSpeed
-        ball.horizontalSpeed = ( ball.x - (plateau.x + plateau.width / 2) ) / 4
+        ball.up = true
+        ball.down = false
+        ball.angle = ( ball.x - (plateau.x + plateau.width / 2) ) / 4
         love.audio.play(sounds.bp)
     end
 
-    if ball.y <= 575 and ball.verticalSpeed > 0 then
-        ball.y = ball.y - ball.speed
-        ball.x = ball.x + ball.horizontalSpeed
-    elseif ball.y <= 575 and ball.verticalSpeed < 0 then
-        ball.y = ball.y + ball.speed
-        ball.x = ball.x + ball.horizontalSpeed
+    ball.speed = 1
+
+    if ball.y <= 575 and ball.up then
+        ball.y = ball.y - ball.speed * ball.speedMultiplier
+        ball.x = ball.x + ball.angle
+    elseif ball.y <= 575 and ball.down then
+        ball.y = ball.y + ball.speed * ball.speedMultiplier
+        ball.x = ball.x + ball.angle
     elseif ball.y + ball.radius >= 575 then
         gameOver = true
         love.audio.play(sounds.go)
     end
 
     if ball.x - ball.radius <= 10 then
-        ball.horizontalSpeed = -ball.horizontalSpeed
+        ball.angle = -ball.angle
         ball.x = ball.x + 1
         love.audio.stop(sounds.bw)
         love.audio.play(sounds.bw)
     elseif ball.x + ball.radius >= 790 then
-        ball.horizontalSpeed = -ball.horizontalSpeed
+        ball.angle = -ball.angle
         ball.x = ball.x - 1
         love.audio.stop(sounds.bw)
         love.audio.play(sounds.bw)
     end
 
     if ball.y - ball.radius <= 40 then
-        ball.verticalSpeed = -ball.verticalSpeed
+        ball.up = false
+        ball.down = true
         love.audio.stop(sounds.bw)
         love.audio.play(sounds.bw)
     end
@@ -276,7 +288,7 @@ function love.draw()
     --love.graphics.draw(levelImages.one, width / 2 - 64 / 2, height / 2 - 163 / 2)
 
     if not gameOver then
-        love.graphics.print("Score: " ..score.. "  Multiplicateur: " ..multiplieur.. "  Dernière destruction: " ..os.time() - lastBreak.. "  Temps: " ..os.time() - start.. " secondes  Briques détruites: " ..totalBrickCount - brickCount.. " sur " ..totalBrickCount, 10, 10 )
+        love.graphics.print("Score: " ..score.. "  Multiplier: " ..multiplieur.. "  Last destruction: " ..os.time() - lastBreak.. "  Time: " ..os.time() - start.. " seconds  Bricks destroyed: " ..totalBrickCount - brickCount.. " of " ..totalBrickCount, 10, 10 )
         time = (os.time() - start) / 100
     else
         love.graphics.print("Game over  ;  Score: score / (temps / 100) = " ..score.. " / " ..time.. " = " ..score / time , width / 4, height / 2) -- Game over
@@ -289,14 +301,6 @@ function love.draw()
 
     love.graphics.setColor(41, 48, 58)
     love.graphics.circle("fill", ball.x, ball.y, ball.radius ) -- Affiche la balle
-
-
-    for _, e in pairs(bricksController.bricks) do
-        love.graphics.line(ball.x, ball.y, ball.x + 100, ball.y)
-        love.graphics.line(ball.x, ball.y, ball.x - 100, ball.y)
-        love.graphics.line(ball.x, ball.y, ball.x, ball.y + 100)
-        love.graphics.line(ball.x, ball.y, ball.x, ball.y - 100)
-    end
 
     love.graphics.setColor(255, 55, 55)
     love.graphics.line(0, 575, 800, 575) -- Dead-line
@@ -325,5 +329,5 @@ function love.draw()
         love.graphics.circle("fill", b.x, b.y, 4)
     end
 
-    --love.graphics.print("Jeu créer par Quôzul", width - 150, height - 20)
+    love.graphics.print("Game created by Quôzul", width - 160, height - 20)
 end
